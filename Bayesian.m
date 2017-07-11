@@ -22,7 +22,7 @@ function varargout = Bayesian(varargin)
 
 % Edit the above text to modify the response to help Bayesian
 
-% Last Modified by GUIDE v2.5 11-Jul-2017 14:39:32
+% Last Modified by GUIDE v2.5 11-Jul-2017 20:26:54
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -56,7 +56,7 @@ guidata(hObject, handles);
 function varargout = Bayesian_OutputFcn(hObject, eventdata, handles) 
 varargout{1} = handles.output;
 %---------------------------------Unused Callbacks-------------------------
-function interval_list_CreateFcn(hObject, eventdata, handles)
+function interval_list_1_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
@@ -118,11 +118,18 @@ function signal_list_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
-function interval_list_ButtonDownFcn(hObject, eventdata, handles)
+function interval_list_1_ButtonDownFcn(hObject, eventdata, handles)
 function display_type_CreateFcn(hObject, eventdata, handles)
-
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
+end
+function interval_list_2_CreateFcn(hObject, eventdata, handles)
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+function time_slider_CreateFcn(hObject, eventdata, handles)
+if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor',[.9 .9 .9]);
 end
 %---------------------------------Unused Callbacks end---------------------
 function refresh_limits_Callback(hObject, eventdata, handles)
@@ -134,40 +141,93 @@ set(handles.xlim,'String',x);
 set(handles.length,'String',t);
 
 function add_interval_Callback(hObject, eventdata, handles)
-f1 = str2double(get(handles.freq_1,'String'));
-f2 = str2double(get(handles.freq_2,'String'));
+f1 = csv_to_mvar(get(handles.freq_1,'String'));
+f2 = csv_to_mvar(get(handles.freq_2,'String'));
 ws = str2double(get(handles.window_size,'String'));
 if isnan(ws)
-    ws = 1/min(f1,f2);
+    ws = 10/min([f1 f2]);
 end
-fl = sprintf('%.3f,%.3f | %.2f',min(f1,f2),max(f1,f2),ws);
-list = get(handles.interval_list,'String');
+fl = sprintf('%.3f,%.3f | %.2f',min(f1),max(f1),ws);
+list = get(handles.interval_list_1,'String');
 list{end+1,1} = fl;
-set(handles.interval_list,'String',list);      
-    
-function interval_list_KeyPressFcn(hObject, eventdata, handles)
+set(handles.interval_list_1,'String',list);      
+f2 = sprintf('%.3f,%.3f | %.2f',min(f2),max(f2),ws);
+list = get(handles.interval_list_2,'String');
+list{end+1,1} = f2;
+set(handles.interval_list_2,'String',list); 
+
+
+function interval_list_1_KeyPressFcn(hObject, eventdata, handles)
 switch eventdata.Key
     case 'delete'
-        interval_selected = get(handles.interval_list,'Value');
+        interval_selected = get(handles.interval_list_1,'Value');
         if min(interval_selected)>1
-            set(handles.interval_list,'Value',min(interval_selected)-1);
+            set(handles.interval_list_1,'Value',min(interval_selected)-1);
         else
-            set(handles.interval_list,'Value',1);
+            set(handles.interval_list_1,'Value',1);
         end
-        list = get(handles.interval_list,'String');
+        list = get(handles.interval_list_1,'String');
         list(interval_selected,:) = [];
-        set(handles.interval_list,'String',list);
-        handles.bands(:,interval_selected) = [];
-        guidata(hObject,handles);
-        interval_list_Callback(hObject, eventdata, handles)
+        set(handles.interval_list_1,'String',list);
+        
+        interval_selected = get(handles.interval_list_2,'Value');
+        if min(interval_selected)>1
+            set(handles.interval_list_2,'Value',min(interval_selected)-1);
+        else
+            set(handles.interval_list_2,'Value',1);
+        end
+        list = get(handles.interval_list_2,'String');
+        list(interval_selected,:) = [];
+        set(handles.interval_list_2,'String',list);
+        if isfield(handles,'bands')
+            handles.bands(:,interval_selected) = [];
+            guidata(hObject,handles);
+            interval_list_1_Callback(hObject, eventdata, handles)
+            guidata(hObject,handles);
+        end        
+        drawnow;
+end       
+
+function interval_list_2_KeyPressFcn(hObject, eventdata, handles)
+switch eventdata.Key
+    case 'delete'
+        interval_selected = get(handles.interval_list_1,'Value');
+        if min(interval_selected)>1
+            set(handles.interval_list_1,'Value',min(interval_selected)-1);
+        else
+            set(handles.interval_list_1,'Value',1);
+        end
+        list = get(handles.interval_list_1,'String');
+        list(interval_selected,:) = [];
+        set(handles.interval_list_1,'String',list);
+        if isfield(handles,'bands')
+            handles.bands(:,interval_selected) = [];
+            guidata(hObject,handles);
+        end
+        interval_list_1_Callback(hObject, eventdata, handles)
         guidata(hObject,handles);
         drawnow;
-end   
-
-%---------------------------Reading the data
+        interval_selected = get(handles.interval_list_2,'Value');
+        if min(interval_selected)>1
+            set(handles.interval_list_2,'Value',min(interval_selected)-1);
+        else
+            set(handles.interval_list_2,'Value',1);
+        end
+        list = get(handles.interval_list_2,'String');
+        list(interval_selected,:) = [];
+        set(handles.interval_list_2,'String',list);
+        if isfield(handles,'bands')
+            handles.bands(:,interval_selected) = [];
+            guidata(hObject,handles);
+        end
+        interval_list_1_Callback(hObject, eventdata, handles)
+        guidata(hObject,handles);
+        drawnow;
+end 
+%---------------------------Reading the data-------------------------------
 function file_Callback(hObject, eventdata, handles)
 
-% --------------------------------------------------------------------
+% -------------------------------------------------------------------------
 function csv_read_Callback(hObject, eventdata, handles)
 %Read csv file
     linkaxes([handles.time_series_1 handles.time_series_2],'x');
@@ -194,7 +254,7 @@ function csv_read_Callback(hObject, eventdata, handles)
             errordlg('Data set orientation must be specified')
             return;
     end
-    list = cell(size(sig,1)/2+1,1);
+    list = cell(size(sig,1)/2,1);
     list{1,1} = 'Signal Pair 1';
     
     for i = 2:size(sig,1)/2
@@ -217,7 +277,7 @@ function csv_read_Callback(hObject, eventdata, handles)
     xlabel(handles.time_series_2,'Time (s)');
     set(handles.status,'String','Select Data And Continue With Wavelet Transform');
 
-% --------------------------------------------------------------------
+% -------------------------------------------------------------------------
 function mat_read_Callback(hObject, eventdata, handles)
 %Read mat file    
     linkaxes([handles.time_series_1 handles.time_series_2],'x');
@@ -246,7 +306,7 @@ function mat_read_Callback(hObject, eventdata, handles)
             errordlg('Data set orientation must be specified')
             return;
     end
-    list = cell(size(sig,1)/2+1,1);
+    list = cell(size(sig,1)/2,1);
     list{1,1} = 'Signal Pair 1';
     for i = 2:size(sig,1)/2
         list{i,1} = sprintf('Signal Pair %d',i);
@@ -277,17 +337,30 @@ xl = xl.*handles.fs;
 xl(2) = min(xl(2),size(handles.sig,2));
 xl(1) = max(xl(1),1);
 handles.sig_cut = handles.sig(:,xl(1):xl(2));
-
-band_list = get(handles.interval_list,'String'); 
+band_list_1 = get(handles.interval_list_1,'String');
+interval_selected = get(handles.interval_list_1,'Value');
+set(handles.interval_list_2,'Value',interval_selected);
+ovr = str2double(get(handles.overlap,'String'));
+pr = str2double(get(handles.prop_const,'String'));
+bn =  str2double(get(handles.order,'String'));
 warning off;
-tic
-for i = 1:size(handles.sig,1)
-    for j =1:size(band_list,1)
-        fl = csv_to_mvar(band_list{j,1}(1:strfind(band_list{j,1},'|')-1));
+
+for i = 1:size(handles.sig,1)/2
+    for j =1:size(band_list_1,1)
+        
+        fl = csv_to_mvar(band_list_1{j,1}(1:strfind(band_list_1{j,1},'|')-1));
         [handles.bands{i,j},~] = loop_butter(handles.sig_cut(i,:),fl,handles.fs);
+        phi1 = angle(hilbert(handles.bands{i,j}));          
+        
+        fl = csv_to_mvar(band_list_1{j,1}(1:strfind(band_list_1{j,1},'|')-1));
+        [handles.bands{i+size(handles.sig,1)/2,j},~] = loop_butter(handles.sig_cut(i+size(handles.sig,1)/2,:),fl,handles.fs);
+        phi2 = angle(hilbert(handles.bands{i+size(handles.sig,1)/2,j}));
+        
+        win = str2double(band_list_1{j,1}(strfind(band_list_1{j,1},'|')+2:end));
+        [handles.tm{i,j},handles.cc{i,j},~] = bayes_main(phi1,phi2,win,1/handles.fs,ovr,pr,0,bn);
     end
 end
-toc
+
 guidata(hObject,handles);
 warning on;
 linkaxes([handles.phi1_axes,handles.phi2_axes,handles.coupling_strength_axis,...
@@ -308,32 +381,37 @@ set(handles.status, 'String', 'Done Plotting');
 if isfield(handles,'TPC')
     xyplot_Callback(hObject, eventdata, handles);
 end
-interval_list_Callback(hObject, eventdata, handles)
+interval_list_1_Callback(hObject, eventdata, handles)
 intervals_Callback(hObject, eventdata, handles)  
     
-function interval_list_Callback(hObject, eventdata, handles)
-
-interval_selected = get(handles.interval_list,'Value');
+function interval_list_1_Callback(hObject, eventdata, handles)
+if ~isfield(handles,'bands')
+    return;
+end
+interval_selected = get(handles.interval_list_1,'Value');
 signal_selected = get(handles.signal_list,'Value');
-ovr = str2double(get(handles.overlap,'String'));
-pr = str2double(get(handles.prop_const,'String'));
+set(handles.interval_list_2,'Value',interval_selected);
 bn =  str2double(get(handles.order,'String'));
-win = str2double(get(handles.window_size,'String'));%FIX THIS
 display_selected = get(handles.display_type,'Value');
-
+set(handles.time_slider,'Max',size(handles.cc{signal_selected,interval_selected},1));
+set(handles.time_slider,'Min',0);
+set(handles.time_slider,'SliderStep',...
+    [1/(size(handles.cc{signal_selected,interval_selected},1)) 1/(size(handles.cc{signal_selected,interval_selected},1))]);
 if display_selected == 1
     cla(handles.coupling_strength_axis,'reset');
     phi1 = angle(hilbert(handles.bands{signal_selected,interval_selected}));          
     plot(handles.phi1_axes, handles.time_axis, phi1);
     phi2 = angle(hilbert(handles.bands{signal_selected+size(handles.sig,1)/2,interval_selected}));         
-    plot(handles.phi2_axes, handles.time_axis, phi2);
-    [tm,cc,~] = bayes_main(phi1,phi2,win,1/handles.fs,ovr,pr,0,bn);
-    for j = 1:size(cc,1)
-        [cpl1(j),cpl2(j),~] = dirc(cc(j,:),bn);
+    plot(handles.phi2_axes, handles.time_axis, phi2);    
+    set(handles.time_slider,'Max',size(handles.cc,1));
+    set(handles.time_slider,'Max',1);
+    set(handles.time_slider,'SliderStep',[1/(size(handles.cc,1)) 1/(size(handles.cc,1))]);
+    for j = 1:size(handles.cc{signal_selected,interval_selected},1)
+        [cpl1(j),cpl2(j),~] = dirc(handles.cc{signal_selected,interval_selected}(j,:),bn);
     end
     hold(handles.coupling_strength_axis,'on');
-    plot(handles.coupling_strength_axis,tm,cpl1); 
-    plot(handles.coupling_strength_axis,tm,cpl2); 
+    plot(handles.coupling_strength_axis,handles.tm{signal_selected,interval_selected},cpl1); 
+    plot(handles.coupling_strength_axis,handles.tm{signal_selected,interval_selected},cpl2); 
 
     legend(handles.coupling_strength_axis,'cp1','cp2');
     xlabel(handles.coupling_strength_axis,'Time (s)');
@@ -342,14 +420,13 @@ if display_selected == 1
     ylabel(handles.coupling_strength_axis,'Coupling Strength');
     set(handles.phi1_axes,'xticklabels',[]);
     set(handles.phi2_axes,'xticklabels',[]);
+    xl = csv_to_mvar(get(handles.xlim, 'String'));
+    xlim(handles.time_series_1, xl);
 elseif display_selected == 2
-    phi1 = angle(hilbert(handles.bands{signal_selected,interval_selected})); 
-    phi2 = angle(hilbert(handles.bands{signal_selected+size(handles.sig,1)/2,interval_selected}));
-    [~,cc,~] = bayes_main(phi1,phi2,win,1/handles.fs,ovr,pr,0,bn);
     t1=0:0.13:2*pi;t2=0:0.13:2*pi; 
     q1(1:length(t1),1:length(t1))=0;q2=q1;
-    for i=1:size(cc,1)
-        u = cc(i,:)
+    for i=1:size(handles.cc,1)
+        u = handles.cc{signal_selected,interval_selected}(i,:);
         K=length(u)/2;
 
         for i1=1:length(t1)                
@@ -394,8 +471,12 @@ elseif display_selected == 2
     view(handles.CF1,[-40 50]);
     view(handles.CF2,[-40 50]);
 end
-toc
 set(handles.status, 'String', 'Done Plotting');
+
+function interval_list_2_Callback(hObject, eventdata, handles)
+interval_selected = get(handles.interval_list_2,'Value');
+set(handles.interval_list_1,'Value',interval_selected);
+interval_list_1_Callback(hObject, eventdata, handles)
 
 function display_type_Callback(hObject, eventdata, handles)
 display_selected = get(handles.display_type,'Value');
@@ -416,8 +497,8 @@ if display_selected == 1
     uistack(handles.phi1_axes,'top');
     uistack(handles.phi2_axes,'top');    
     uistack(handles.coupling_strength_axis,'top');
-    interval_list_Callback(hObject, eventdata, handles)
-elseif display_selected == 2
+    interval_list_1_Callback(hObject, eventdata, handles)
+elseif display_selected == 2    
     linkaxes([handles.phi1_axes,handles.phi2_axes,handles.coupling_strength_axis,...
     handles.time_series_1,handles.time_series_2],'off');
     child_handles = allchild(handles.plots_pane);
@@ -433,5 +514,63 @@ elseif display_selected == 2
     set(handles.coupling_strength_axis,'visible','off');
     uistack(handles.CF1,'top');
     uistack(handles.CF2,'top');
-    interval_list_Callback(hObject, eventdata, handles)
+    interval_list_1_Callback(hObject, eventdata, handles)
 end
+
+% --- Executes on slider movement.
+function time_slider_Callback(hObject, eventdata, handles)
+    display_selected = get(handles.display_type,'Value');
+    if ~isfield(handles,'bands') || display_selected ~= 2
+        return;
+    end
+    interval_selected = get(handles.interval_list_1,'Value');
+    set(handles.interval_list_2,'Value',interval_selected);
+    signal_selected = get(handles.signal_list,'Value');
+    bn =  str2double(get(handles.order,'String'));
+    cc = handles.cc{signal_selected,interval_selected};    
+    slider_val = get(handles.time_slider,'Value');
+    if slider_val == 0
+        interval_list_1_Callback(hObject, eventdata, handles)
+        return;
+    end
+    t1=0:0.13:2*pi;t2=0:0.13:2*pi; 
+    q1(1:length(t1),1:length(t1))=0;q2=q1;
+    u = cc(slider_val,:);
+    K=length(u)/2;
+
+    for i1=1:length(t1)                
+        for j1=1:length(t2)
+            br=2;
+
+            for ii=1:bn
+                q1(i1,j1)=q1(i1,j1)+u(br)*sin(ii*t1(i1))+u(br+1)*cos(ii*t1(i1));
+                q2(i1,j1)=q2(i1,j1)+u(K+br)*sin(ii*t2(j1))+u(K+br+1)*cos(ii*t2(j1));
+                br=br+2;  
+            end
+            for ii=1:bn
+                q1(i1,j1)=q1(i1,j1)+u(br)*sin(ii*t2(j1))+u(br+1)*cos(ii*t2(j1));
+                q2(i1,j1)=q2(i1,j1)+u(K+br)*sin(ii*t1(i1))+u(K+br+1)*cos(ii*t1(i1));
+                br=br+2;
+            end
+
+            for ii=1:bn
+                for jj=1:bn                            
+                   q1(i1,j1)=q1(i1,j1)+u(br)*sin(ii*t1(i1)+jj*t2(j1))+u(br+1)*cos(ii*t1(i1)+jj*t2(j1));                                                                
+                   q2(i1,j1)=q2(i1,j1)+u(K+br)*sin(ii*t1(i1)+jj*t2(j1))+u(K+br+1)*cos(ii*t1(i1)+jj*t2(j1));                                   
+                   br=br+2;
+
+                   q1(i1,j1)=q1(i1,j1)+u(br)*sin(ii*t1(i1)-jj*t2(j1))+u(br+1)*cos(ii*t1(i1)-jj*t2(j1));                                                                
+                   q2(i1,j1)=q2(i1,j1)+u(K+br)*sin(ii*t1(i1)-jj*t2(j1))+u(K+br+1)*cos(ii*t1(i1)-jj*t2(j1));     
+                   br=br+2;
+                end
+            end                                                                   
+        end
+    end       
+    surf(handles.CF1,t1,t2,q1,'FaceColor','interp');     
+    surf(handles.CF2,t1,t2,q2,'FaceColor','interp'); 
+    xlabel(handles.CF1,'\phi_1');ylabel(handles.CF1,'\phi_2');zlabel(handles.CF1,'q_1(\phi_1,\phi_2)');
+    xlabel(handles.CF2,'\phi_1');ylabel(handles.CF2,'\phi_2');zlabel(handles.CF2,'q_2(\phi_1,\phi_2)');
+    title(handles.CF1,'CF1');
+    title(handles.CF2,'CF2');
+    view(handles.CF1,[-40 50]);
+    view(handles.CF2,[-40 50]);
