@@ -22,7 +22,7 @@ function varargout = Bayesian(varargin)
 
 % Edit the above text to modify the response to help Bayesian
 
-% Last Modified by GUIDE v2.5 10-Jul-2017 14:44:30
+% Last Modified by GUIDE v2.5 11-Jul-2017 14:39:32
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -118,8 +118,12 @@ function signal_list_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
-
 function interval_list_ButtonDownFcn(hObject, eventdata, handles)
+function display_type_CreateFcn(hObject, eventdata, handles)
+
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
 %---------------------------------Unused Callbacks end---------------------
 function refresh_limits_Callback(hObject, eventdata, handles)
 x = get(handles.time_series_1,'xlim');
@@ -264,9 +268,9 @@ function mat_read_Callback(hObject, eventdata, handles)
     xlabel(handles.time_series_2,'Time (s)');
     set(handles.status,'String','Select Data And Continue With Wavelet Transform');
 
-
-
 function calculate_Callback(hObject, eventdata, handles)
+set(handles.status,'String','Calculating..');
+drawnow;
 xl = get(handles.xlim,'String');
 xl = csv_to_mvar(xl);
 xl = xl.*handles.fs;
@@ -289,7 +293,7 @@ warning on;
 linkaxes([handles.phi1_axes,handles.phi2_axes,handles.coupling_strength_axis,...
     handles.time_series_1,handles.time_series_2],'x');
 signal_list_Callback(hObject, eventdata, handles)
-
+set(handles.status,'String','Finished!');
 function signal_list_Callback(hObject, eventdata, handles)
 %Selecting the signal pair   
 signal_selected = get(handles.signal_list, 'Value');        
@@ -300,7 +304,7 @@ plot(handles.time_series_2, handles.time_axis, handles.sig(signal_selected+size(
 xlim(handles.time_series_2, xl);        
 xlabel(handles.time_series_2, 'Time (s)');
 refresh_limits_Callback(hObject, eventdata, handles);%updates the values in the box 
-set(handles.status, 'String', 'Select Data And Continue With Wavelet Transform');
+set(handles.status, 'String', 'Done Plotting');
 if isfield(handles,'TPC')
     xyplot_Callback(hObject, eventdata, handles);
 end
@@ -308,18 +312,20 @@ interval_list_Callback(hObject, eventdata, handles)
 intervals_Callback(hObject, eventdata, handles)  
     
 function interval_list_Callback(hObject, eventdata, handles)
-cla(handles.coupling_strength_axis,'reset');
+
 interval_selected = get(handles.interval_list,'Value');
 signal_selected = get(handles.signal_list,'Value');
 ovr = str2double(get(handles.overlap,'String'));
 pr = str2double(get(handles.prop_const,'String'));
 bn =  str2double(get(handles.order,'String'));
 win = str2double(get(handles.window_size,'String'));%FIX THIS
-tic
-for i = 1:size(interval_selected,2)
-    phi1 = angle(hilbert(handles.bands{signal_selected,interval_selected(i)}));          
+display_selected = get(handles.display_type,'Value');
+
+if display_selected == 1
+    cla(handles.coupling_strength_axis,'reset');
+    phi1 = angle(hilbert(handles.bands{signal_selected,interval_selected}));          
     plot(handles.phi1_axes, handles.time_axis, phi1);
-    phi2 = angle(hilbert(handles.bands{signal_selected+size(handles.sig,1)/2,interval_selected(i)}));         
+    phi2 = angle(hilbert(handles.bands{signal_selected+size(handles.sig,1)/2,interval_selected}));         
     plot(handles.phi2_axes, handles.time_axis, phi2);
     [tm,cc,~] = bayes_main(phi1,phi2,win,1/handles.fs,ovr,pr,0,bn);
     for j = 1:size(cc,1)
@@ -328,9 +334,104 @@ for i = 1:size(interval_selected,2)
     hold(handles.coupling_strength_axis,'on');
     plot(handles.coupling_strength_axis,tm,cpl1); 
     plot(handles.coupling_strength_axis,tm,cpl2); 
+
     legend(handles.coupling_strength_axis,'cp1','cp2');
-end 
+    xlabel(handles.coupling_strength_axis,'Time (s)');
+    ylabel(handles.phi1_axes,'phi1');
+    ylabel(handles.phi2_axes,'phi2');
+    ylabel(handles.coupling_strength_axis,'Coupling Strength');
+    set(handles.phi1_axes,'xticklabels',[]);
+    set(handles.phi2_axes,'xticklabels',[]);
+elseif display_selected == 2
+    phi1 = angle(hilbert(handles.bands{signal_selected,interval_selected})); 
+    phi2 = angle(hilbert(handles.bands{signal_selected+size(handles.sig,1)/2,interval_selected}));
+    [~,cc,~] = bayes_main(phi1,phi2,win,1/handles.fs,ovr,pr,0,bn);
+    t1=0:0.13:2*pi;t2=0:0.13:2*pi; 
+    q1(1:length(t1),1:length(t1))=0;q2=q1;
+    for i=1:size(cc,1)
+        u = cc(i,:)
+        K=length(u)/2;
+
+        for i1=1:length(t1)                
+            for j1=1:length(t2)
+                br=2;
+
+                for ii=1:bn
+                    q1(i1,j1)=q1(i1,j1)+u(br)*sin(ii*t1(i1))+u(br+1)*cos(ii*t1(i1));
+                    q2(i1,j1)=q2(i1,j1)+u(K+br)*sin(ii*t2(j1))+u(K+br+1)*cos(ii*t2(j1));
+                    br=br+2;  
+                end
+                for ii=1:bn
+                    q1(i1,j1)=q1(i1,j1)+u(br)*sin(ii*t2(j1))+u(br+1)*cos(ii*t2(j1));
+                    q2(i1,j1)=q2(i1,j1)+u(K+br)*sin(ii*t1(i1))+u(K+br+1)*cos(ii*t1(i1));
+                    br=br+2;
+                end
+
+                for ii=1:bn
+                    for jj=1:bn                            
+                       q1(i1,j1)=q1(i1,j1)+u(br)*sin(ii*t1(i1)+jj*t2(j1))+u(br+1)*cos(ii*t1(i1)+jj*t2(j1));                                                                
+                       q2(i1,j1)=q2(i1,j1)+u(K+br)*sin(ii*t1(i1)+jj*t2(j1))+u(K+br+1)*cos(ii*t1(i1)+jj*t2(j1));                                   
+                       br=br+2;
+
+                       q1(i1,j1)=q1(i1,j1)+u(br)*sin(ii*t1(i1)-jj*t2(j1))+u(br+1)*cos(ii*t1(i1)-jj*t2(j1));                                                                
+                       q2(i1,j1)=q2(i1,j1)+u(K+br)*sin(ii*t1(i1)-jj*t2(j1))+u(K+br+1)*cos(ii*t1(i1)-jj*t2(j1));     
+                       br=br+2;
+                    end
+                end                                                                   
+            end
+        end
+        q13(:,:,i) = q1;
+        q23(:,:,i) = q2;        
+    end
+    q13 = squeeze(mean(q13,3));
+    q23 = squeeze(mean(q23,3));
+    surf(handles.CF1,t1,t2,q13,'FaceColor','interp');     
+    surf(handles.CF2,t1,t2,q23,'FaceColor','interp'); 
+    xlabel(handles.CF1,'\phi_1');ylabel(handles.CF1,'\phi_2');zlabel(handles.CF1,'q_1(\phi_1,\phi_2)');
+    xlabel(handles.CF2,'\phi_1');ylabel(handles.CF2,'\phi_2');zlabel(handles.CF2,'q_2(\phi_1,\phi_2)');
+    title(handles.CF1,'CF1');
+    title(handles.CF2,'CF2');
+    view(handles.CF1,[-40 50]);
+    view(handles.CF2,[-40 50]);
+end
 toc
+set(handles.status, 'String', 'Done Plotting');
 
-
-
+function display_type_Callback(hObject, eventdata, handles)
+display_selected = get(handles.display_type,'Value');
+if display_selected == 1
+    linkaxes([handles.phi1_axes,handles.phi2_axes,handles.coupling_strength_axis,...
+    handles.time_series_1,handles.time_series_2],'x');    
+    child_handles = allchild(handles.plots_pane);
+    for i = 1:length(child_handles)
+        if strcmp(get(child_handles(i),'type'),'axes')
+            cla(child_handles(i),'reset');
+        end
+    end
+    set(handles.CF1,'visible','off');
+    set(handles.CF2,'visible','off');
+    set(handles.phi1_axes,'visible','on');
+    set(handles.phi2_axes,'visible','on');
+    set(handles.coupling_strength_axis,'visible','on');
+    uistack(handles.phi1_axes,'top');
+    uistack(handles.phi2_axes,'top');    
+    uistack(handles.coupling_strength_axis,'top');
+    interval_list_Callback(hObject, eventdata, handles)
+elseif display_selected == 2
+    linkaxes([handles.phi1_axes,handles.phi2_axes,handles.coupling_strength_axis,...
+    handles.time_series_1,handles.time_series_2],'off');
+    child_handles = allchild(handles.plots_pane);
+    for i = 1:length(child_handles)
+        if strcmp(get(child_handles(i),'type'),'axes')
+            cla(child_handles(i),'reset');
+        end
+    end
+    set(handles.CF1,'visible','on');
+    set(handles.CF2,'visible','on');
+    set(handles.phi1_axes,'visible','off');
+    set(handles.phi2_axes,'visible','off');
+    set(handles.coupling_strength_axis,'visible','off');
+    uistack(handles.CF1,'top');
+    uistack(handles.CF2,'top');
+    interval_list_Callback(hObject, eventdata, handles)
+end
