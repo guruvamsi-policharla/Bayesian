@@ -338,34 +338,36 @@ xl(2) = min(xl(2),size(handles.sig,2));
 xl(1) = max(xl(1),1);
 handles.sig_cut = handles.sig(:,xl(1):xl(2));
 band_list_1 = get(handles.interval_list_1,'String');
+band_list_2 = get(handles.interval_list_2,'String');
 interval_selected = get(handles.interval_list_1,'Value');
 set(handles.interval_list_2,'Value',interval_selected);
 ovr = str2double(get(handles.overlap,'String'));
 pr = str2double(get(handles.prop_const,'String'));
 bn =  str2double(get(handles.order,'String'));
 warning off;
-
+h = waitbar(0,'Calculating..');
 for i = 1:size(handles.sig,1)/2
-    for j =1:size(band_list_1,1)
-        
+    for j =1:size(band_list_1,1)        
         fl = csv_to_mvar(band_list_1{j,1}(1:strfind(band_list_1{j,1},'|')-1));
         [handles.bands{i,j},~] = loop_butter(handles.sig_cut(i,:),fl,handles.fs);
         phi1 = angle(hilbert(handles.bands{i,j}));          
         
-        fl = csv_to_mvar(band_list_1{j,1}(1:strfind(band_list_1{j,1},'|')-1));
+        fl = csv_to_mvar(band_list_2{j,1}(1:strfind(band_list_2{j,1},'|')-1));
         [handles.bands{i+size(handles.sig,1)/2,j},~] = loop_butter(handles.sig_cut(i+size(handles.sig,1)/2,:),fl,handles.fs);
         phi2 = angle(hilbert(handles.bands{i+size(handles.sig,1)/2,j}));
         
         win = str2double(band_list_1{j,1}(strfind(band_list_1{j,1},'|')+2:end));
         [handles.tm{i,j},handles.cc{i,j},~] = bayes_main(phi1,phi2,win,1/handles.fs,ovr,pr,0,bn);
     end
+    waitbar(i/size(handles.sig,1)/2,h);
 end
 
+delete(h);
 guidata(hObject,handles);
 warning on;
 linkaxes([handles.phi1_axes,handles.phi2_axes,handles.coupling_strength_axis,...
     handles.time_series_1,handles.time_series_2],'x');
-signal_list_Callback(hObject, eventdata, handles)
+signal_list_Callback(hObject, eventdata, handles);
 set(handles.status,'String','Finished!');
 function signal_list_Callback(hObject, eventdata, handles)
 %Selecting the signal pair   
@@ -413,7 +415,7 @@ if display_selected == 1
     plot(handles.coupling_strength_axis,handles.tm{signal_selected,interval_selected},cpl1); 
     plot(handles.coupling_strength_axis,handles.tm{signal_selected,interval_selected},cpl2); 
 
-    legend(handles.coupling_strength_axis,'cp1','cp2');
+    legend(handles.coupling_strength_axis,'osc1 -> osc2','osc2 -> osc1');
     xlabel(handles.coupling_strength_axis,'Time (s)');
     ylabel(handles.phi1_axes,'phi1');
     ylabel(handles.phi2_axes,'phi2');
@@ -457,6 +459,7 @@ elseif display_selected == 2
                 end                                                                   
             end
         end
+        
         q13(:,:,i) = q1;
         q23(:,:,i) = q2;        
     end
@@ -523,12 +526,35 @@ function time_slider_Callback(hObject, eventdata, handles)
     if ~isfield(handles,'bands') || display_selected ~= 2
         return;
     end
+    
+    band_list_1 = get(handles.interval_list_1,'String');
     interval_selected = get(handles.interval_list_1,'Value');
     set(handles.interval_list_2,'Value',interval_selected);
     signal_selected = get(handles.signal_list,'Value');
     bn =  str2double(get(handles.order,'String'));
     cc = handles.cc{signal_selected,interval_selected};    
     slider_val = get(handles.time_slider,'Value');
+    win = str2double(band_list_1{interval_selected,1}(strfind(band_list_1{interval_selected,1},'|')+2:end));
+    axes_child = allchild(handles.time_series_1);
+    for j = 1:size(axes_child,1)
+        if strcmpi(get(axes_child(j),'Type'),'Line') 
+            line_style = get(axes_child(j),'linestyle');
+            line_width = get(axes_child(j),'linewidth');
+            if strcmp(line_style,'--') && line_width <= 1
+                delete(axes_child(j)); 
+            end
+        end
+    end
+    axes_child = allchild(handles.time_series_2);
+    for j = 1:size(axes_child,1)
+        if strcmpi(get(axes_child(j),'Type'),'Line') 
+            line_style = get(axes_child(j),'linestyle');
+            line_width = get(axes_child(j),'linewidth');
+            if strcmp(line_style,'--') && line_width <= 1
+                delete(axes_child(j)); 
+            end
+        end
+    end
     if slider_val == 0
         interval_list_1_Callback(hObject, eventdata, handles)
         return;
@@ -536,8 +562,26 @@ function time_slider_Callback(hObject, eventdata, handles)
     t1=0:0.13:2*pi;t2=0:0.13:2*pi; 
     q1(1:length(t1),1:length(t1))=0;q2=q1;
     u = cc(slider_val,:);
-    K=length(u)/2;
-
+    K=length(u)/2;        
+    
+    yl = get(handles.time_series_1,'ylim');
+    xl = [slider_val-1 slider_val-1].*win;
+    hold(handles.time_series_1,'on');
+    plot(handles.time_series_1,xl,yl,'--r')
+    hold(handles.time_series_1,'off');
+    hold(handles.time_series_2,'on');
+    plot(handles.time_series_2,xl,yl,'--r')
+    hold(handles.time_series_2,'off');
+    
+    yl = get(handles.time_series_1,'ylim');
+    xl = [slider_val slider_val].*win;
+    hold(handles.time_series_1,'on');
+    plot(handles.time_series_1,xl,yl,'--r')
+    hold(handles.time_series_1,'off');
+    hold(handles.time_series_2,'on');
+    plot(handles.time_series_2,xl,yl,'--r')
+    hold(handles.time_series_2,'off');            
+    
     for i1=1:length(t1)                
         for j1=1:length(t2)
             br=2;
