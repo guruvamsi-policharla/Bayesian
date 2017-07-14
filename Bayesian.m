@@ -48,6 +48,10 @@ movegui('center')
 axes(handles.logo)
 matlabImage = imread('physicslogo.png');
 image(matlabImage)
+h = findall(0,'Type','uicontrol');
+set(h,'FontUnits','points');
+set(h,'FontSize',8);
+set(h,'FontUnits','normalized');
 axis off
 axis image
 handles.output = hObject;
@@ -358,6 +362,17 @@ for i = 1:size(handles.sig,1)/2
         
         win = str2double(band_list_1{j,1}(strfind(band_list_1{j,1},'|')+2:end));
         [handles.tm{i,j},handles.cc{i,j},~] = bayes_main(phi1,phi2,win,1/handles.fs,ovr,pr,0,bn);
+        
+        [surrogates] = surrogate(phi1,10,'CPP');
+        for k = 1:size(surrogates,1)
+            [~,cc_surr{k,1},~] = bayes_main(surrogates(k,:),phi2,win,1/handles.fs,ovr,pr,1,bn);
+            for idx = 1:size(cc_surr{k,1},1)
+                [cpl1(k,idx),cpl2(k,idx),~] = dirc(cc_surr{k,1}(idx,:),bn);
+            end
+            
+        end
+        handles.surr_cpl1{i,j} = max(cpl1);
+        handles.surr_cpl2{i,j} = max(cpl2);
     end
     waitbar(i/size(handles.sig,1)/2,h);
 end
@@ -414,7 +429,9 @@ if display_selected == 1
     hold(handles.coupling_strength_axis,'on');
     plot(handles.coupling_strength_axis,handles.tm{signal_selected,interval_selected},cpl1); 
     plot(handles.coupling_strength_axis,handles.tm{signal_selected,interval_selected},cpl2); 
-
+    %Plotting the surrogates
+    plot(handles.coupling_strength_axis,handles.tm{signal_selected,interval_selected},handles.surr_cpl1{signal_selected,interval_selected}); 
+    plot(handles.coupling_strength_axis,handles.tm{signal_selected,interval_selected},handles.surr_cpl2{signal_selected,interval_selected});
     legend(handles.coupling_strength_axis,'osc1 -> osc2','osc2 -> osc1');
     xlabel(handles.coupling_strength_axis,'Time (s)');
     ylabel(handles.phi1_axes,'phi1');
